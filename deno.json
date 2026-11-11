@@ -1,0 +1,26 @@
+{
+  "imports": {
+    "fastify": "npm:fastify@^5.12.8",
+    "fastify/types/schema": "npm:fastify@^5/types/schema",
+    "@std/assert": "jsr:@std/assert@^1",
+    "pino": "npm:pino@^9",
+    "prom-client": "npm:prom-client@^15",
+    "postgres": "npm:postgres@^4.1.0"   
+
+  },
+  "coverage": {
+    "thresholds": { 
+      "lines": 70, 
+      "branches": 70, 
+      "functions": 70 
+    }
+  },
+  "exclude": ["coverege/", "spike/"],
+  "tasks": {
+    "lint": "deno lint",
+    "check": "deno check src/main.ts",
+    "test": "deno test --allow-env --allow-net --coverage=coverage",
+    "coverage": "deno coverage coverage --lcov --output=coverage/lcov.info",
+    "db": "deno run --allow-net --allow-env --env-file=.env db.ts"
+  }
+}
