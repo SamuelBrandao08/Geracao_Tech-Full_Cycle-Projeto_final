@@ -1,0 +1,42 @@
+# spike/docker-compose.yml — PostgreSQL para a spike.
+# As variáveis vêm do arquivo .env (copie de .env.example). Nunca versione o .env.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      # ":?" faz o Compose falhar com mensagem clara se a variável faltar,
+      # em vez de subir um container que cai logo na partida.
+      POSTGRES_USER: ${POSTGRES_USER:?defina POSTGRES_USER no .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:?defina POSTGRES_DB no .env}
+    ports:
+      # Publicado só em 127.0.0.1: o banco não fica exposto à rede local.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # "$$" evita que o Compose expanda a variável; quem expande é o shell do container.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+  app:
+    build: .
+    ports:
+      - "8000:3000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
