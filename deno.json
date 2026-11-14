@@ -14,8 +14,14 @@
       "functions": 70
     }
   },
-  "include": ["src/", "tests/"],
-  "exclude": ["coverege/", "spike/", "docs/"],
+  "fmt": {
+    "include": ["src/", "tests/"],
+    "exclude": ["coverage/", "spike/", "docs/"]
+  },
+  "lint": {
+    "include": ["src/", "tests/"],
+    "exclude": ["coverage/", "spike/", "docs/"]
+  },
   "tasks": {
     "lint": "deno lint",
     "check": "deno check src/main.ts",
