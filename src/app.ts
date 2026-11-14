@@ -41,8 +41,8 @@ export interface AppDependencies {
 }
 
 export function buildApp(deps: AppDependencies) {
-  const logger =
-    deps.logger ?? createLogger(deps.enableLogger ? "info" : "silent");
+  const logger = deps.logger ??
+    createLogger(deps.enableLogger ? "info" : "silent");
   const metrics = deps.metrics ?? createMetrics();
 
   const app = Fastify({
@@ -69,16 +69,25 @@ export function buildApp(deps: AppDependencies) {
       }
 
       if (error instanceof ConflictError) {
-        return reply.code(409).send({ error: "conflict", message: error.message });
+        return reply.code(409).send({
+          error: "conflict",
+          message: error.message,
+        });
       }
 
       if (error instanceof NotFoundError) {
-        return reply.code(404).send({ error: "not_found", message: error.message });
+        return reply.code(404).send({
+          error: "not_found",
+          message: error.message,
+        });
       }
 
       const status = (error as { statusCode?: number }).statusCode;
       if (status && status >= 400 && status < 500) {
-        return reply.code(status).send({ error: "bad_request", message: error.message });
+        return reply.code(status).send({
+          error: "bad_request",
+          message: error.message,
+        });
       }
 
       request.log.error(error);
@@ -217,7 +226,10 @@ export function buildApp(deps: AppDependencies) {
       if (!revoked) {
         throw new NotFoundError("Credencial não encontrada");
       }
-      return reply.code(200).send({ jti: request.params.id, status: "revoked" });
+      return reply.code(200).send({
+        jti: request.params.id,
+        status: "revoked",
+      });
     },
   );
 
@@ -322,7 +334,8 @@ export function buildApp(deps: AppDependencies) {
         metrics.loansDeniedTotal.inc({ reason: "LOAN_LIMIT_EXCEEDED" });
         return reply.code(422).send({
           error: "loan_limit_exceeded",
-          message: `Limite de empréstimos simultâneos atingido para categoria ${claims.category}`,
+          message:
+            `Limite de empréstimos simultâneos atingido para categoria ${claims.category}`,
         });
       }
 
