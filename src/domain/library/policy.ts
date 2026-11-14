@@ -1,4 +1,4 @@
-import { MemberCategory } from "../credencial/jws.ts";
+import { MemberCategory } from "../credential/jws.ts";
 
 const LOAN_LIMITS: Record<MemberCategory, number> = {
   aluno: 2,

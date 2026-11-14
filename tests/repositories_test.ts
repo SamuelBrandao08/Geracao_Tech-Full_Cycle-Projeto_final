@@ -3,14 +3,14 @@ import {
   assertEquals,
   assertFalse,
   assertRejects,
-} from "jsr:@std/assert@1";
-import { checkDbHealth, createDbConnection } from "./connection.ts";
+} from "@std/assert";
+import { checkDbHealth, createDbConnection } from "../src/infra/db/connection.ts";
 import {
   ConflictError,
   NotFoundError,
   PostgresLibraryRepository,
-} from "./repositories.ts";
-import { runMigrations } from "./schema.ts";
+} from "../src/infra/db/repositories.ts";
+import { runMigrations } from "../src/infra/db/schema.ts";
 
 const DATABASE_URL = Deno.env.get("DATABASE_URL");
 

@@ -19,7 +19,7 @@
   "tasks": {
     "lint": "deno lint",
     "check": "deno check src/main.ts",
-    "test": "deno test --allow-env --allow-net --coverage=coverage",
+    "test": "deno test --env-file=.env --allow-env --allow-sys --allow-net --coverage=coverage",
     "coverage": "deno coverage coverage --lcov --output=coverage/lcov.info",
     "db": "deno run --allow-net --allow-env --env-file=.env db.ts"
   }
