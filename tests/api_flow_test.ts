@@ -1,8 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertStringIncludes,
-} from "jsr:@std/assert@1";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { buildApp } from "../src/app.ts";
 import {
   exportPublicKey,
@@ -15,7 +11,8 @@ import { runMigrations } from "../src/infra/db/schema.ts";
 const DATABASE_URL = Deno.env.get("DATABASE_URL");
 
 Deno.test({
-  name: "API E2E: fluxo completo de sócio, carteirinha, empréstimo, erros e métricas",
+  name:
+    "API E2E: fluxo completo de sócio, carteirinha, empréstimo, erros e métricas",
   ignore: !DATABASE_URL,
   async fn() {
     const sql = createDbConnection(DATABASE_URL, 2);

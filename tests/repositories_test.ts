@@ -1,10 +1,8 @@
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertRejects,
-} from "@std/assert";
-import { checkDbHealth, createDbConnection } from "../src/infra/db/connection.ts";
+  checkDbHealth,
+  createDbConnection,
+} from "../src/infra/db/connection.ts";
 import {
   ConflictError,
   NotFoundError,
@@ -15,7 +13,8 @@ import { runMigrations } from "../src/infra/db/schema.ts";
 const DATABASE_URL = Deno.env.get("DATABASE_URL");
 
 Deno.test({
-  name: "db integration: fluxo completo de persistência, concorrência e revogação",
+  name:
+    "db integration: fluxo completo de persistência, concorrência e revogação",
   ignore: !DATABASE_URL, // Ignora automaticamente se rodar apenas unitários sem banco
   async fn() {
     const sql = createDbConnection(DATABASE_URL, 2);
@@ -31,8 +30,16 @@ Deno.test({
       const repo = new PostgresLibraryRepository(sql);
 
       // 2. Cadastro de sócio e unicidade de e-mail
-      const member1 = await repo.createMember("Ana Silva", "ana@uni.edu", "aluno");
-      const member2 = await repo.createMember("Carlos Souza", "carlos@uni.edu", "professor");
+      const member1 = await repo.createMember(
+        "Ana Silva",
+        "ana@uni.edu",
+        "aluno",
+      );
+      const member2 = await repo.createMember(
+        "Carlos Souza",
+        "carlos@uni.edu",
+        "professor",
+      );
       assertEquals(member1.category, "aluno");
 
       await assertRejects(
@@ -67,7 +74,9 @@ Deno.test({
         expiresAt: exp,
       });
 
-      const foundByIdem = await repo.findCredentialByIdempotencyKey("req-abc-123");
+      const foundByIdem = await repo.findCredentialByIdempotencyKey(
+        "req-abc-123",
+      );
       assertEquals(foundByIdem?.jti, jti);
 
       const foundBeforeRevoke = await repo.findCredentialByJti(jti);
