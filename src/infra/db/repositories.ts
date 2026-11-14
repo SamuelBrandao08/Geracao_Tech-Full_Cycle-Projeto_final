@@ -62,7 +62,9 @@ export class PostgresLibraryRepository {
   }) {
     const [cred] = await this.sql`
       INSERT INTO credentials (jti, member_id, idempotency_key, token, issued_at, expires_at)
-      VALUES (${data.jti}, ${data.memberId}, ${data.idempotencyKey ?? null}, ${data.token}, ${data.issuedAt}, ${data.expiresAt})
+      VALUES (${data.jti}, ${data.memberId}, ${
+      data.idempotencyKey ?? null
+    }, ${data.token}, ${data.issuedAt}, ${data.expiresAt})
       RETURNING jti, member_id, token, issued_at, expires_at, revoked_at
     `;
     return cred;
@@ -87,7 +89,12 @@ export class PostgresLibraryRepository {
   }
 
   // --- BOOKS & COPIES ---
-  async createBookWithCopies(title: string, author: string, isbn: string, copyCodes: string[]) {
+  async createBookWithCopies(
+    title: string,
+    author: string,
+    isbn: string,
+    copyCodes: string[],
+  ) {
     return await this.sql.begin(async (tx) => {
       const [book] = await tx`
         INSERT INTO books (title, author, isbn)

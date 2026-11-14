@@ -73,13 +73,14 @@ export function instrumentApp<L extends FastifyBaseLogger>(
   metrics: Metrics,
 ): void {
   app.addHook("onRequest", (request, _reply, done) => {
-    (request as FastifyRequest & { startTime?: number }).startTime =
-      performance.now();
+    (request as FastifyRequest & { startTime?: number }).startTime = performance
+      .now();
     done();
   });
 
   app.addHook("onResponse", (request, reply, done) => {
-    const start = (request as FastifyRequest & { startTime?: number }).startTime;
+    const start =
+      (request as FastifyRequest & { startTime?: number }).startTime;
     const route = request.routeOptions?.url ?? "unmatched";
     if (route !== "/metrics") {
       const labels = {
