@@ -97,7 +97,7 @@ export async function verifyPayload(
     ["verify"],
   );
   const signatureBytes = decodeSignature(signature);
-  if (signatureBytes === null) return false; // assinatura com base64 inválido
+  if (signatureBytes === null) return false;
   const data = new TextEncoder().encode(payload);
   return await crypto.subtle.verify(ALGORITHM, publicKey, signatureBytes, data);
 }

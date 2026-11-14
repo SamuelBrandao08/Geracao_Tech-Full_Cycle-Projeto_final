@@ -1,9 +1,4 @@
-import {
-  assert,
-  assertEquals,
-  assertFalse,
-  assertRejects,
-} from "jsr:@std/assert@1";
+import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
 import {
   exportPublicKey,
   generateKeyPair,
