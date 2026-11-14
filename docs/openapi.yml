@@ -1,0 +1,190 @@
+openapi: 3.1.0
+info:
+  title: API de Biblioteca com Carteirinha Digital
+  version: 1.0.0
+  description: >
+    Monólito modular em Deno + Fastify + PostgreSQL para cadastro de sócios,
+    emissão/revogação de carteirinhas assinadas em Ed25519 (JWS) e controle
+    de empréstimos com proteção de concorrência.
+servers:
+  - url: http://localhost:8000
+    description: Ambiente local (Docker Compose)
+paths:
+  /health:
+    get:
+      summary: Liveness check da API
+      responses:
+        "200":
+          description: API operacional
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /db-check:
+    get:
+      summary: Readiness check da conexão com o PostgreSQL
+      responses:
+        "200":
+          description: Banco de dados acessível
+        "503":
+          description: Falha na conexão com o banco de dados
+  /metrics:
+    get:
+      summary: Métricas Prometheus (RED e regras de negócio)
+      responses:
+        "200":
+          description: Métricas em formato texto Prometheus
+          content:
+            text/plain:
+              schema:
+                type: string
+  /members:
+    post:
+      summary: Cadastra um novo sócio
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, category]
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 120
+                email:
+                  type: string
+                  format: email
+                category:
+                  type: string
+                  enum: [aluno, professor, externo]
+      responses:
+        "201":
+          description: Sócio criado com sucesso
+        "400":
+          description: Payload inválido
+        "409":
+          description: E-mail já cadastrado
+  /members/{id}/credential:
+    post:
+      summary: Emite carteirinha digital (JWS Ed25519) de forma idempotente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Credencial existente retornada via chave de idempotência
+        "201":
+          description: Nova credencial emitida
+        "404":
+          description: Sócio não encontrado
+  /credentials/{id}/revoke:
+    post:
+      summary: Revoga uma carteirinha ativa pelo JTI
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Credencial revogada
+        "404":
+          description: Credencial não encontrada
+  /books:
+    get:
+      summary: Lista livros do catálogo com contagem de exemplares disponíveis
+      responses:
+        "200":
+          description: Lista de livros
+    post:
+      summary: Cadastra um livro e seus exemplares físicos
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, author, isbn, copyCodes]
+              additionalProperties: false
+              properties:
+                title:
+                  type: string
+                author:
+                  type: string
+                isbn:
+                  type: string
+                copyCodes:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Livro e exemplares criados
+        "400":
+          description: Payload inválido
+  /loans:
+    post:
+      summary: Registra empréstimo validando assinatura, expiração, revogação, limite e disponibilidade
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credentialToken, copyId]
+              additionalProperties: false
+              properties:
+                credentialToken:
+                  type: string
+                copyId:
+                  type: string
+                  format: uuid
+      responses:
+        "201":
+          description: Empréstimo registrado
+        "400":
+          description: Payload inválido
+        "401":
+          description: Carteirinha malformada, expirada ou assinatura inválida
+        "403":
+          description: Carteirinha revogada
+        "404":
+          description: Exemplar não encontrado
+        "409":
+          description: Exemplar já possui empréstimo ativo
+        "422":
+          description: Limite de empréstimos simultâneos da categoria excedido
+  /loans/{id}/return:
+    post:
+      summary: Registra a devolução de um empréstimo ativo
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Devolução concluída
+        "404":
+          description: Empréstimo ativo não encontrado
