@@ -7,11 +7,25 @@ info:
     emissão/revogação de carteirinhas assinadas em Ed25519 (JWS) e controle
     de empréstimos com proteção de concorrência.
 servers:
+  - url: http://localhost:3000
+    description: Ambiente local
   - url: http://localhost:8000
-    description: Ambiente local (Docker Compose)
+    description: Ambiente Docker Compose
+tags:
+  - name: Sistema
+    description: Health checks, conectividade com banco e métricas Prometheus
+  - name: Sócios
+    description: Cadastro e gerenciamento de sócios da biblioteca
+  - name: Carteirinhas
+    description: Emissão idempotente e revogação de credenciais JWS Ed25519
+  - name: Acervo
+    description: Cadastro, atualização, exemplares físicos e consulta de disponibilidade
+  - name: Empréstimos
+    description: Registro de empréstimos com verificação de credencial e devoluções
 paths:
   /health:
     get:
+      tags: [Sistema]
       summary: Liveness check da API
       responses:
         "200":
@@ -26,6 +40,7 @@ paths:
                     example: ok
   /db-check:
     get:
+      tags: [Sistema]
       summary: Readiness check da conexão com o PostgreSQL
       responses:
         "200":
@@ -34,6 +49,7 @@ paths:
           description: Falha na conexão com o banco de dados
   /metrics:
     get:
+      tags: [Sistema]
       summary: Métricas Prometheus (RED e regras de negócio)
       responses:
         "200":
@@ -44,6 +60,7 @@ paths:
                 type: string
   /members:
     post:
+      tags: [Sócios]
       summary: Cadastra um novo sócio
       requestBody:
         required: true
@@ -73,6 +90,7 @@ paths:
           description: E-mail já cadastrado
   /members/{id}/credential:
     post:
+      tags: [Carteirinhas]
       summary: Emite carteirinha digital (JWS Ed25519) de forma idempotente
       parameters:
         - name: id
@@ -95,6 +113,7 @@ paths:
           description: Sócio não encontrado
   /credentials/{id}/revoke:
     post:
+      tags: [Carteirinhas]
       summary: Revoga uma carteirinha ativa pelo JTI
       parameters:
         - name: id
@@ -110,11 +129,13 @@ paths:
           description: Credencial não encontrada
   /books:
     get:
+      tags: [Acervo]
       summary: Lista livros do catálogo com contagem de exemplares disponíveis
       responses:
         "200":
           description: Lista de livros
     post:
+      tags: [Acervo]
       summary: Cadastra um livro e seus exemplares físicos
       requestBody:
         required: true
@@ -141,8 +162,76 @@ paths:
           description: Livro e exemplares criados
         "400":
           description: Payload inválido
+  /books/{id}:
+    patch:
+      tags: [Acervo]
+      summary: Atualiza metadados de um livro existente (título, autor ou ISBN)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              minProperties: 1
+              additionalProperties: false
+              properties: {
+                title: { type: string },
+                author: { type: string },
+                isbn: { type: string },
+              }
+      responses:
+        "200":
+          description: Livro atualizado com sucesso
+        "400":
+          description: Payload inválido
+        "404":
+          description: Livro não encontrado
+        "409":
+          description: ISBN já cadastrado para outro livro
+  /books/{id}/copies:
+    post:
+      tags: [Acervo]
+      summary: Adiciona novos exemplares físicos a um livro existente
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [copyCodes]
+              additionalProperties: false
+              properties:
+                copyCodes:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+      responses:
+        "201":
+          description: Exemplares adicionados com sucesso
+        "400":
+          description: Payload inválido
+        "404":
+          description: Livro não encontrado
+        "409":
+          description: Código de exemplar já cadastrado
   /loans:
     post:
+      tags: [Empréstimos]
       summary: Registra empréstimo validando assinatura, expiração, revogação, limite e disponibilidade
       requestBody:
         required: true
@@ -175,6 +264,7 @@ paths:
           description: Limite de empréstimos simultâneos da categoria excedido
   /loans/{id}/return:
     post:
+      tags: [Empréstimos]
       summary: Registra a devolução de um empréstimo ativo
       parameters:
         - name: id

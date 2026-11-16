@@ -43,6 +43,17 @@ Deno.test({
       const dbRes = await app.inject({ method: "GET", url: "/db-check" });
       assertEquals(dbRes.statusCode, 200);
 
+      const openapiRes = await app.inject({
+        method: "GET",
+        url: "/openapi.yml",
+      });
+      assertEquals(openapiRes.statusCode, 200);
+      assertStringIncludes(openapiRes.body, "openapi: 3.1.0");
+
+      const docsRes = await app.inject({ method: "GET", url: "/docs" });
+      assertEquals(docsRes.statusCode, 200);
+      assertStringIncludes(docsRes.body, "SwaggerUIBundle");
+
       // 2. Validação estrita Ajv (400 Bad Request para campo extra)
       const badMember = await app.inject({
         method: "POST",
@@ -210,6 +221,32 @@ Deno.test({
       assertEquals(metricsRes.statusCode, 200);
       assertStringIncludes(metricsRes.body, "http_requests_total");
       assertStringIncludes(metricsRes.body, "library_loans_denied_total");
+
+      // 14. Atualiza metadados do livro (PATCH /books/:id)
+      const patchBookRes = await app.inject({
+        method: "PATCH",
+        url: `/books/${book.id}`,
+        payload: { title: "Clean Architecture (2ª Edição)" },
+      });
+      assertEquals(patchBookRes.statusCode, 200);
+      assertEquals(patchBookRes.json().title, "Clean Architecture (2ª Edição)");
+
+      // 15. Adiciona novo exemplar ao livro existente (POST /books/:id/copies)
+      const addCopiesRes = await app.inject({
+        method: "POST",
+        url: `/books/${book.id}/copies`,
+        payload: { copyCodes: [`CP-EXTRA-${Date.now()}`] },
+      });
+      assertEquals(addCopiesRes.statusCode, 201);
+      assertEquals(addCopiesRes.json().copies.length, 1);
+
+      // 16. Cenário negativo: livro inexistente retorna 404
+      const notFoundBookRes = await app.inject({
+        method: "PATCH",
+        url: "/books/00000000-0000-4000-8000-000000000000",
+        payload: { title: "Inexistente" },
+      });
+      assertEquals(notFoundBookRes.statusCode, 404);
     } finally {
       await app.close();
       await sql.end();

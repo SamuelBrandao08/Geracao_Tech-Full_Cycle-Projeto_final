@@ -106,6 +106,39 @@ export function buildApp(deps: AppDependencies) {
     return { status: "ok" };
   });
 
+  // --- Documentação Interativa (OpenAPI + Swagger UI) ---
+  app.get("/openapi.yml", async (_request, reply) => {
+    const specUrl = new URL("../docs/openapi.yml", import.meta.url);
+    const yaml = await Deno.readTextFile(specUrl);
+    return reply.type("application/yaml; charset=utf-8").send(yaml);
+  });
+
+  app.get("/docs", (_request, reply) => {
+    const html = `<!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <title>API Biblioteca Digital — Swagger UI</title>
+      <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css" />
+    </head>
+    <body>
+      <div id="swagger-ui"></div>
+      <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+      <script>
+        window.onload = () => {
+          SwaggerUIBundle({
+            url: "/openapi.yml",
+            dom_id: "#swagger-ui",
+            deepLinking: true,
+            docExpansion: "list",
+          });
+        };
+      </script>
+    </body>
+    </html>`;
+    return reply.type("text/html; charset=utf-8").send(html);
+  });
+
   // --- 1. Sócios ---
   app.post<{
     Body: { name: string; email: string; category: MemberCategory };
@@ -266,6 +299,84 @@ export function buildApp(deps: AppDependencies) {
         copyCodes,
       );
       return reply.code(201).send(book);
+    },
+  );
+
+  app.patch<{
+    Params: { id: string };
+    Body: { title?: string; author?: string; isbn?: string };
+  }>(
+    "/books/:id",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+          },
+        },
+        body: {
+          type: "object",
+          minProperties: 1,
+          additionalProperties: false,
+          properties: {
+            title: { type: "string", minLength: 1, maxLength: 200 },
+            author: { type: "string", minLength: 1, maxLength: 150 },
+            isbn: { type: "string", minLength: 5, maxLength: 32 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const updated = await deps.repository.updateBook(
+        request.params.id,
+        request.body,
+      );
+      if (!updated) {
+        throw new NotFoundError("Livro não encontrado");
+      }
+      return reply.status(200).send(updated);
+    },
+  );
+
+  app.post<{
+    Params: { id: string };
+    Body: { copyCodes: string[] };
+  }>(
+    "/books/:id/copies",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["id"],
+          properties: {
+            id: { type: "string", format: "uuid" },
+          },
+        },
+        body: {
+          type: "object",
+          required: ["copyCodes"],
+          additionalProperties: false,
+          properties: {
+            copyCodes: {
+              type: "array",
+              minItems: 1,
+              items: { type: "string", minLength: 1, maxLength: 64 },
+            },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await deps.repository.addBookCopies(
+        request.params.id,
+        request.body.copyCodes,
+      );
+      if (!result) {
+        throw new NotFoundError("Livro não encontrado");
+      }
+      return reply.status(201).send(result);
     },
   );
 

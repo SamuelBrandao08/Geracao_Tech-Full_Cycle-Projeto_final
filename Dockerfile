@@ -2,6 +2,8 @@ FROM denoland/deno:2.9.8
 
 WORKDIR /app
 
+COPY docs ./docs
+
 RUN chown -R deno:deno /app
 USER deno
 
@@ -14,4 +16,4 @@ RUN deno cache src/main.ts
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["run", "--no-prompt", "--allow-net", "--allow-env", "--allow-sys=networkInterfaces,hostname", "src/main.ts"]
+CMD ["run", "--no-prompt", "--allow-read", "--allow-net", "--allow-env", "--allow-sys=networkInterfaces,hostname", "src/main.ts"]

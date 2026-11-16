@@ -22,14 +22,18 @@
     "include": ["src/", "tests/"],
     "exclude": ["coverage/", "spike/", "docs/"]
   },
+  "test": {
+    "include": ["src/", "tests/"],
+    "exclude": ["spike/", "coverage/"]
+  },
   "tasks": {
     "lint": "deno lint",
     "check": "deno check src/main.ts",
-    "test": "deno test --allow-env --allow-sys --allow-net --coverage=coverage",
-    "test:local": "deno test --env-file=.env --allow-env --allow-sys --allow-net --coverage=coverage",
+    "test": "deno test --allow-read --allow-env --allow-sys --allow-net --coverage=coverage",
+    "test:local": "deno test --env-file=.env --allow-read --allow-env --allow-sys --allow-net --coverage=coverage",
     "coverage": "deno coverage coverage --lcov --output=coverage/lcov.info",
     "db": "deno run --allow-net --allow-env --env-file=.env db.ts",
-    "dev": "deno run --watch --env-file=.env --allow-net --allow-env --allow-sys=networkInterfaces,hostname src/main.ts",
-    "start": "deno run --allow-net --allow-env --allow-sys=networkInterfaces,hostname src/main.ts"
+    "dev": "deno run --watch --env-file=.env --allow-read --allow-net --allow-env --allow-sys=networkInterfaces,hostname src/main.ts",
+    "start": "deno run --allow-read --allow-net --allow-env --allow-sys=networkInterfaces,hostname src/main.ts"
   }
 }
