@@ -18,6 +18,61 @@ export class NotFoundError extends Error {
 export class PostgresLibraryRepository {
   constructor(private readonly sql: Sql) {}
 
+  // --- POLICIES ---
+  async listPolicies() {
+    return await this.sql`
+      SELECT category, max_loans, loan_days, credential_days, updated_at
+      FROM library_policies
+      ORDER BY category ASC
+    `;
+  }
+
+  async getPolicyByCategory(category: MemberCategory): Promise<{
+    category: MemberCategory;
+    max_loans: number;
+    loan_days: number;
+    credential_days: number;
+  }> {
+    const [policy] = await this.sql<
+      {
+        category: MemberCategory;
+        max_loans: number;
+        loan_days: number;
+        credential_days: number;
+      }[]
+    >`
+      SELECT category, max_loans, loan_days, credential_days
+      FROM library_policies
+      WHERE category = ${category}
+    `;
+    if (!policy) {
+      throw new NotFoundError(
+        `Política não encontrada para a categoria ${category}`,
+      );
+    }
+    return policy;
+  }
+
+  async updatePolicy(
+    category: MemberCategory,
+    input: { max_loans: number; loan_days: number; credential_days: number },
+  ) {
+    const [updated] = await this.sql`
+      UPDATE library_policies
+      SET
+        max_loans = ${input.max_loans},
+        loan_days = ${input.loan_days},
+        credential_days = ${input.credential_days},
+        updated_at = now()
+      WHERE category = ${category}
+      RETURNING category, max_loans, loan_days, credential_days, updated_at
+    `;
+    if (!updated) {
+      throw new NotFoundError("Categoria de política não encontrada");
+    }
+    return updated;
+  }
+
   // --- MEMBERS ---
   async createMember(name: string, email: string, category: MemberCategory) {
     try {
@@ -114,6 +169,78 @@ export class PostgresLibraryRepository {
 
       return { ...book, copies };
     });
+  }
+
+  async updateBook(
+    bookId: string,
+    input: { title?: string; author?: string; isbn?: string },
+  ): Promise<
+    { id: string; title: string; author: string; isbn: string } | null
+  > {
+    const [existing] = await this.sql`
+      SELECT id, title, author, isbn FROM books WHERE id = ${bookId}
+    `;
+    if (!existing) {
+      return null;
+    }
+
+    const title = input.title ?? existing.title;
+    const author = input.author ?? existing.author;
+    const isbn = input.isbn ?? existing.isbn;
+
+    try {
+      const [updated] = await this.sql`
+      UPDATE books
+      SET title = ${title}, author = ${author}, isbn = ${isbn}
+      WHERE id = ${bookId}
+      RETURNING id, title, author, isbn
+      `;
+      return {
+        id: updated.id,
+        title: updated.title,
+        author: updated.author,
+        isbn: updated.isbn,
+      };
+    } catch (err) {
+      if ((err as { code?: string }).code === "23505") {
+        throw new ConflictError("ISBN já cadastrado para outro livro");
+      }
+      throw err;
+    }
+  }
+
+  async addBookCopies(
+    bookId: string,
+    copyCodes: string[],
+  ): Promise<
+    { bookId: string; copies: Array<{ id: string; code: string }> } | null
+  > {
+    const [book] = await this.sql`
+      SELECT id FROM books WHERE id = ${bookId}
+    `;
+    if (!book) {
+      return null;
+    }
+
+    try {
+      return await this.sql.begin(async (tx) => {
+        const insertedCopies: Array<{ id: string; code: string }> = [];
+        for (const code of copyCodes) {
+          const [copy] = await tx`
+          INSERT INTO copies (book_id, code)
+          VALUES (${bookId}, ${code})
+          RETURNING id, code
+          `;
+          insertedCopies.push({ id: copy.id, code: copy.code });
+        }
+        return { bookId, copies: insertedCopies };
+      });
+    } catch (err) {
+      if ((err as { code?: string }).code === "23505") {
+        throw new ConflictError("Código de exemplar já cadastrado");
+      }
+      throw err;
+    }
   }
 
   async listBooksWithAvailability() {

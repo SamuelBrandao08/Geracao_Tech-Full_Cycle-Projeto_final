@@ -209,7 +209,10 @@ export function buildApp(deps: AppDependencies) {
 
       const jti = crypto.randomUUID();
       const nowSec = Math.floor(Date.now() / 1000);
-      const expSec = calculateExpiration(nowSec, 30);
+      const policy = await deps.repository.getPolicyByCategory(
+        member.category as MemberCategory,
+      );
+      const expSec = calculateExpiration(nowSec, policy.credential_days);
 
       const token = await issueCredential(
         deps.signingKey.privateKey,
@@ -438,20 +441,24 @@ export function buildApp(deps: AppDependencies) {
       }
 
       // 4. Regra de limite por categoria -> 422
-      const activeCount = await deps.repository.countActiveLoansByMember(
-        claims.sub,
-      );
-      if (!canMemberBorrow(claims.category, activeCount)) {
+      const [activeCount, policy] = await Promise.all([
+        deps.repository.countActiveLoansByMember(claims.sub),
+        deps.repository.getPolicyByCategory(claims.category),
+      ]);
+
+      if (!canMemberBorrow(claims.category, activeCount, policy.max_loans)) {
         metrics.loansDeniedTotal.inc({ reason: "LOAN_LIMIT_EXCEEDED" });
         return reply.code(422).send({
           error: "loan_limit_exceeded",
           message:
-            `Limite de empréstimos simultâneos atingido para categoria ${claims.category}`,
+            `Limite de empréstimos simultâneos (${policy.max_loans}) atingido para categoria ${claims.category}`,
         });
       }
 
       // 5. Persistência (índice único parcial protege contra concorrência -> 409)
-      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const dueDate = new Date(
+        Date.now() + policy.loan_days * 24 * 60 * 60 * 1000,
+      );
       const loan = await deps.repository.createLoan(
         copyId,
         claims.sub,
@@ -477,6 +484,49 @@ export function buildApp(deps: AppDependencies) {
     async (request, reply) => {
       const loan = await deps.repository.returnLoan(request.params.id);
       return reply.code(200).send(loan);
+    },
+  );
+
+  // --- 7. Políticas da Biblioteca ---
+  app.get("/policies", async () => {
+    return await deps.repository.listPolicies();
+  });
+
+  app.put<{
+    Params: { category: MemberCategory };
+    Body: { max_loans: number; loan_days: number; credential_days: number };
+  }>(
+    "/policies/:category",
+    {
+      schema: {
+        params: {
+          type: "object",
+          required: ["category"],
+          properties: {
+            category: {
+              type: "string",
+              enum: ["aluno", "professor", "externo"],
+            },
+          },
+        },
+        body: {
+          type: "object",
+          required: ["max_loans", "loan_days", "credential_days"],
+          additionalProperties: false,
+          properties: {
+            max_loans: { type: "integer", minimum: 0, maximum: 50 },
+            loan_days: { type: "integer", minimum: 1, maximum: 365 },
+            credential_days: { type: "integer", minimum: 1, maximum: 1825 },
+          },
+        },
+      },
+    },
+    async (request, reply) => {
+      const updated = await deps.repository.updatePolicy(
+        request.params.category,
+        request.body,
+      );
+      return reply.code(200).send(updated);
     },
   );
 

@@ -22,6 +22,8 @@ tags:
     description: Cadastro, atualização, exemplares físicos e consulta de disponibilidade
   - name: Empréstimos
     description: Registro de empréstimos com verificação de credencial e devoluções
+  - name: Políticas
+    description: Consulta e configuração dinâmica de limites e prazos por categoria
 paths:
   /health:
     get:
@@ -278,3 +280,44 @@ paths:
           description: Devolução concluída
         "404":
           description: Empréstimo ativo não encontrado
+  /policies:
+    get:
+      tags: [Políticas]
+      summary: Lista as políticas vigentes de empréstimo e validade por categoria
+      responses:
+        "200":
+          description: Lista de políticas configuradas
+  /policies/{category}:
+    put:
+      tags: [Políticas]
+      summary: Atualiza limite de empréstimos, prazo de devolução e validade da carteirinha de uma categoria
+      parameters:
+        - name: category
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [aluno, professor, externo]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [max_loans, loan_days, credential_days]
+              additionalProperties: false
+              properties:
+                max_loans:
+                  type: integer
+                  minimum: 0
+                loan_days:
+                  type: integer
+                  minimum: 1
+                credential_days:
+                  type: integer
+                  minimum: 1
+      responses:
+        "200":
+          description: Política atualizada com sucesso
+        "400":
+          description: Payload ou categoria inválida

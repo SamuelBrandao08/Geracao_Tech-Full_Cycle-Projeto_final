@@ -17,7 +17,8 @@ Deno.test({
   async fn() {
     const sql = createDbConnection(DATABASE_URL, 2);
     await runMigrations(sql);
-    await sql`TRUNCATE TABLE loans, credentials, copies, books, members RESTART IDENTITY CASCADE`;
+    await sql`TRUNCATE TABLE loans, credentials, copies, books, members, library_policies RESTART IDENTITY CASCADE`;
+    await runMigrations(sql);
 
     const { publicKey, privateKey } = await generateKeyPair();
     const publicJwk = await exportPublicKey(publicKey);
@@ -215,6 +216,22 @@ Deno.test({
         },
       });
       assertEquals(revokedLoan.statusCode, 403);
+
+      // 12.1 Consulta e atualização dinâmica de políticas da biblioteca
+      const listPoliciesRes = await app.inject({
+        method: "GET",
+        url: "/policies",
+      });
+      assertEquals(listPoliciesRes.statusCode, 200);
+      assertEquals(listPoliciesRes.json().length, 3);
+
+      const updatePolicyRes = await app.inject({
+        method: "PUT",
+        url: "/policies/externo",
+        payload: { max_loans: 2, loan_days: 10, credential_days: 45 },
+      });
+      assertEquals(updatePolicyRes.statusCode, 200);
+      assertEquals(updatePolicyRes.json().max_loans, 2);
 
       // 13. Verificação das Métricas Prometheus (/metrics)
       const metricsRes = await app.inject({ method: "GET", url: "/metrics" });

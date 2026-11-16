@@ -57,4 +57,22 @@ export async function runMigrations(sql: Sql): Promise<void> {
     ON loans (copy_id)
     WHERE returned_at IS NULL
   `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS library_policies (
+      category TEXT PRIMARY KEY CHECK (category IN ('aluno', 'professor', 'externo')),
+      max_loans INT NOT NULL CHECK (max_loans >= 0),
+      loan_days INT NOT NULL CHECK (loan_days >= 1),
+      credential_days INT NOT NULL CHECK (credential_days >= 1),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `;
+  await sql`
+    INSERT INTO library_policies (category, max_loans, loan_days, credential_days)
+    VALUES
+    ('aluno', 2, 7, 30),
+    ('professor', 5, 14, 90),
+    ('externo', 1, 7, 30)
+    ON CONFLICT (category) DO NOTHING
+  `;
 }

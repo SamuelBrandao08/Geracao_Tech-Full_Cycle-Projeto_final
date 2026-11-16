@@ -1,26 +1,30 @@
-import { MemberCategory } from "../credential/jws.ts";
+import { type MemberCategory } from "../credential/jws.ts";
 
-const LOAN_LIMITS: Record<MemberCategory, number> = {
+export const DEFAULT_LOAN_LIMITS: Record<MemberCategory, number> = {
   aluno: 2,
   professor: 5,
   externo: 1,
 };
 
 export function getLoanLimitForCategory(category: MemberCategory): number {
-  return LOAN_LIMITS[category];
+  return DEFAULT_LOAN_LIMITS[category];
 }
 
 export function canMemberBorrow(
   category: MemberCategory,
   activeLoansCount: number,
+  maxLoansOverride?: number,
 ): boolean {
-  if (activeLoansCount < 0) return false;
-  return activeLoansCount < getLoanLimitForCategory(category);
+  if (activeLoansCount < 0) {
+    return false;
+  }
+  const limit = maxLoansOverride ?? DEFAULT_LOAN_LIMITS[category];
+  return activeLoansCount < limit;
 }
 
 export function calculateExpiration(
-  issuedAtSeconds: number,
-  ttlDays = 30,
+  issuedAtSec: number,
+  validityDays = 30,
 ): number {
-  return issuedAtSeconds + ttlDays * 24 * 60 * 60;
+  return issuedAtSec + validityDays * 24 * 60 * 60;
 }
